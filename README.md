@@ -1,8 +1,6 @@
 # Weather App
 Mobile Weather Application written in flutter dart, using API callings for forecast information, current time, sunset and sunrise time at a specific location.
 
-Visit https://youtu.be/F1BLXm8EG1s to see the full usage of this app.
-
 Functionalities being used:
 
 - Dependencies:
