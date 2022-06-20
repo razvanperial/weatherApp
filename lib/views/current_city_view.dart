@@ -8,23 +8,24 @@ import 'package:http/http.dart' as http;
 
 import 'detailed_view.dart';
 
-class CityForecastView extends StatefulWidget {
-  final City city;
+class CurrentCityView extends StatefulWidget {
   AssetImage image = const AssetImage("assets/day_dry.jpeg");
-  CityForecastView({Key? key, required this.city}) : super(key: key);
+  CurrentCityView({Key? key}) : super(key: key);
 
   @override
-  State<CityForecastView> createState() => _CityForecastViewState();
+  State<CurrentCityView> createState() => _CurrentCityViewState();
 }
 
-class _CityForecastViewState extends State<CityForecastView> {
+class _CurrentCityViewState extends State<CurrentCityView> {
   Map? responseMap;
   Map? sunriseMap;
   Map? hourMap;
+  late String name;
+  late double lat;
+  late double lon;
   late List forecast;
   late String temp;
-  late int hour = 0;
-  late int current_hour;
+  int current_hour = DateTime.now().hour;
   late int sunrise_hour;
   late int sunset_hour;
   Icon icon = const Icon(CupertinoIcons.sun_max);
@@ -33,17 +34,36 @@ class _CityForecastViewState extends State<CityForecastView> {
   void initState() {
     if (!mounted) return;
     super.initState();
+    name = "";
     forecast = [];
     temp = "loading...";
-    current_hour = 0;
     sunrise_hour = 0;
     sunset_hour = 0;
     getBackground();
   }
 
-  Future<void> fetchForecast(double lat, double lon) async {
+  Future<void> fetchCoordinates() async {
     if (!mounted) return;
     //call the api and save the json in a response map
+
+    var uri = Uri.parse('http://ip-api.com/json/');
+    http.Response response = await http.get(uri);
+    var responseMap = jsonDecode(response.body);
+
+    setState(
+      () {
+        if (!mounted) return;
+        lat = responseMap["lat"];
+        lon = responseMap["lon"];
+        name = responseMap["regionName"];
+      },
+    );
+  }
+
+  Future<void> fetchForecast() async {
+    if (!mounted) return;
+    //call the api and save the json in a response map
+
     var uri = Uri.parse(
         'http://www.7timer.info/bin/api.pl?lon=$lon&lat=$lat&product=astro&output=json');
     http.Response response = await http.get(uri);
@@ -58,7 +78,7 @@ class _CityForecastViewState extends State<CityForecastView> {
     );
   }
 
-  Future<void> fetchSunrise(double lat, double lon) async {
+  Future<void> fetchSunrise() async {
     if (!mounted) return;
     //call the api and save the json in a response map
 
@@ -76,31 +96,12 @@ class _CityForecastViewState extends State<CityForecastView> {
     });
   }
 
-  Future<void> fetchCurrentTime(String name, String continent) async {
-    if (!mounted) return;
-    //call the api and save the json in a response map
-
-    var uri =
-        Uri.parse('http://worldtimeapi.org/api/timezone/$continent/$name');
-    http.Response response = await http.get(uri);
-    hourMap = jsonDecode(response.body);
-
-    setState(() {
-      if (!mounted) return;
-
-      //calculate current time for that specific location using API call
-      hour = int.parse(hourMap!["datetime"].toString().substring(11, 13));
-      current_hour = DateTime.parse(hourMap!["datetime"].toString()).hour;
-    });
-  }
-
   void getBackground() async {
     if (!mounted) return;
-    setState(() {});
+    await fetchCoordinates();
     List<Future> futures = [
-      fetchForecast(widget.city.lat, widget.city.lon),
-      fetchSunrise(widget.city.lat, widget.city.lon),
-      fetchCurrentTime(widget.city.name, widget.city.continent),
+      fetchForecast(),
+      fetchSunrise(),
     ];
     await Future.wait(futures);
 
@@ -152,60 +153,63 @@ class _CityForecastViewState extends State<CityForecastView> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-                builder: (context) => DetailedView(
-                      city: widget.city,
-                      image: widget.image,
-                    )),
-          );
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: widget.image,
-              fit: BoxFit.fill,
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+              builder: (context) => DetailedView(
+                    city: City(
+                        name: name, lat: lat, lon: lon, continent: "continent"),
+                    image: widget.image,
+                  )),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: widget.image,
+            fit: BoxFit.fill,
+          ),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 150),
+            Text(
+              name,
+              style: style_city_name,
             ),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 150),
-              Text(
-                widget.city.name,
-                style: style_city_name,
-              ),
-              const SizedBox(height: 30),
-              Text(
-                temp,
-                style: style_temperature,
-              ),
-              const SizedBox(height: 50),
-              const Text('tap to see more information',
-                  style: TextStyle(color: Colors.white, fontSize: 20)),
-              temp != "loading..." // check for the response from the api and wait if necessary
-                  ? InfoCard(
-                      temperatures: forecast,
-                      city: widget.city,
-                      hour: hour,
-                    )
-                  : Container(
-                      // default case
-                      height: 200,
-                      width: 350,
-                      decoration: BoxDecoration(
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color.fromARGB(221, 9, 31, 73)
-                                .withOpacity(0.5),
-                            blurRadius: 20.0,
-                            spreadRadius: 3.0,
-                          )
-                        ],
-                      ),
+            const SizedBox(height: 30),
+            Text(
+              temp,
+              style: style_temperature,
+            ),
+            const SizedBox(height: 50),
+            const Text('tap to see more information',
+                style: TextStyle(color: Colors.white, fontSize: 20)),
+            temp != "loading..." // check for the response from the api and wait if necessary
+                ? InfoCard(
+                    temperatures: forecast,
+                    city: City(
+                        name: name, lat: lat, lon: lon, continent: "continent"),
+                    hour: current_hour,
+                  )
+                : Container(
+                    // default case
+                    height: 200,
+                    width: 350,
+                    decoration: BoxDecoration(
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color.fromARGB(221, 9, 31, 73)
+                              .withOpacity(0.5),
+                          blurRadius: 20.0,
+                          spreadRadius: 3.0,
+                        )
+                      ],
                     ),
-            ],
-          ),
-        ));
+                  ),
+          ],
+        ),
+      ),
+    );
   }
 }

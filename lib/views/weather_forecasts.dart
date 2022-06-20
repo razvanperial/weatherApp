@@ -1,5 +1,6 @@
 import 'package:apinio_case_study/lists/city_list.dart';
 import 'package:apinio_case_study/views/city_forecast_view.dart';
+import 'package:apinio_case_study/views/current_city_view.dart';
 import 'package:apinio_case_study/widgets/navigation_drawer/navigation_drawer.dart';
 import 'package:flutter/material.dart';
 
@@ -19,7 +20,7 @@ class _WeatherForecastViewState extends State<WeatherForecastView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(vsync: this, length: cityList.length);
+    _tabController = TabController(vsync: this, length: 1 + cityList.length);
   }
 
   @override
@@ -31,7 +32,9 @@ class _WeatherForecastViewState extends State<WeatherForecastView>
 
   @override
   Widget build(BuildContext context) {
-    List<CityForecastView> cityViewList = [];
+    List<Widget> cityViewList = [];
+
+    cityViewList.add(CurrentCityView());
 
     //create the list of scrollable tabs
     for (var i = 0; i < cityList.length; i++) {
